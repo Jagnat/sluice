@@ -1,5 +1,4 @@
-
-#define SLUICE_EXPORT __declspec(dllexport)
+#include "slc_util.h"
 
 SLUICE_EXPORT void testFun()
 {
