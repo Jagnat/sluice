@@ -1,11 +1,15 @@
-#include <windows.h>
-#include "slc_util.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 
 #include "thirdparty/ladspa.h"
+
+#ifdef _WIN32
+#define WIN32_DLL_EXPORT __declspec(dllexport)
+#else
+#define WIN32_DLL_EXPORT
+#endif
 
 // Cutoff, resonance, input, output
 #define NUM_PORTS 4
@@ -14,40 +18,85 @@
 #define PORT_IN 2
 #define PORT_OUT 3
 
-struct SluiceData
+LADSPA_Descriptor* desc;
+
+typedef struct _SluiceData
 {
-	float 
+	float *cutoff;
+	float *resonance;
 	float *input;
 	float *output;
-};
+} SluiceData;
 
 LADSPA_Handle slcInstantiate(const LADSPA_Descriptor *desc, unsigned long sampleRate)
 {
-	return (void*)0;
+	SluiceData *data = (SluiceData*)calloc(1, sizeof(SluiceData));
+	return (void*)data;
 }
 
 void slcConnectPort(LADSPA_Handle instance, unsigned long port, float *dataLoc)
 {
+	SluiceData *data = (SluiceData*)instance;
+	switch (port)
+	{
+		case PORT_CUTOFF:
+		data->cutoff = dataLoc;
+		break;
 
+		case PORT_RESO:
+		data->resonance = dataLoc;
+		break;
+
+		case PORT_IN:
+		data->input = dataLoc;
+		break;
+
+		case PORT_OUT:
+		data->output = dataLoc;
+		break;
+	}
 }
 
 void slcRun(LADSPA_Handle instance, unsigned long sampleCount)
 {
+	SluiceData *data = (SluiceData*)instance;
 
+	float reso = *data->resonance;
+
+	float* input = data->input;
+	float* output = data->output;
+
+	for (int i = 0; i < sampleCount; ++i)
+	{
+		float postMult = input[i] < 0 ? -1 : 1;
+		if (fabs(input[i]) > reso)
+		{
+			output[i] = reso * postMult;
+		}
+		else
+		{
+			output[i] = input[i];
+		}
+	}
 }
 
 void slcCleanup(LADSPA_Handle instance)
 {
-
+	free(instance);
 }
 
-const LADSPA_Descriptor* ladspa_descriptor(uint32_t Index)
+WIN32_DLL_EXPORT
+const LADSPA_Descriptor *ladspa_descriptor(unsigned long index)
 {
-	LADSPA_Descriptor *desc = (LADSPA_Descriptor*)calloc(1, sizeof(LADSPA_Descriptor));
+	// Only allow one plugin index
+	if (index != 0)
+		return NULL;
+
+	desc = (LADSPA_Descriptor*)calloc(1, sizeof(LADSPA_Descriptor));
 
 	// Properties
-	desc->UniqueID = 87134;
-	desc->Label = "SluicePlugin";
+	desc->UniqueID = 11435;
+	desc->Label = "sluice_plugin";
 	desc->Name = "Sluice Filter";
 	desc->Maker = "Jagannath Natarajan";
 	desc->Copyright = "None";
