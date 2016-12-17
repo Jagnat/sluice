@@ -1,0 +1,1 @@
+xcopy /y sluice.dll %appdata%\Audacity\Plug-Ins\

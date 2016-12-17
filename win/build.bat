@@ -3,4 +3,4 @@ call "../../vc_x86.bat"
 call "clean.bat"
 @echo on
 cl ../src/win32_sluice.c /nologo /Zi /LD ^
-/link /incremental:no /dll /out:sluice.dll
+/link /incremental:no /out:sluice.dll

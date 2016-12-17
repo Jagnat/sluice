@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 #include "thirdparty/ladspa.h"
@@ -26,11 +27,13 @@ typedef struct _SluiceData
 	float *resonance;
 	float *input;
 	float *output;
+	uint32_t sampleRate;
 } SluiceData;
 
 LADSPA_Handle slcInstantiate(const LADSPA_Descriptor *desc, unsigned long sampleRate)
 {
 	SluiceData *data = (SluiceData*)calloc(1, sizeof(SluiceData));
+	data->sampleRate = sampleRate;
 	return (void*)data;
 }
 
@@ -61,22 +64,40 @@ void slcRun(LADSPA_Handle instance, unsigned long sampleCount)
 {
 	SluiceData *data = (SluiceData*)instance;
 
+	float cutoff = *data->cutoff;
 	float reso = *data->resonance;
 
 	float* input = data->input;
 	float* output = data->output;
 
-	for (int i = 0; i < sampleCount; ++i)
+	uint32_t sampleRate = data->sampleRate;
+
+	// w0 = 2pi*f0/Fs
+	float omega = M_PI * 2 * cutoff / (float)sampleRate;
+	float alpha = sin(omega)/(2*reso);
+
+	// LPF coefficients
+	float co = cos(omega);
+	float a0 = 1 + alpha;
+	float a1 = -2 * co;
+	float a2 = 1 - alpha;
+	float b1 = 1 - co;
+	float b0 = b1/2;
+	float b2 = b0;
+
+	// HPF coefficients
+	// float co = cos(omega);
+	// float a0 = 1 + alpha;
+	// float a1 = -2 * co;
+	// float a2 = 1 - alpha;
+	// float b0 = (1+co)/2;
+	// float b1 = -(1+co);
+	// float b2 = b0;
+
+	for (int i = 2; i < sampleCount; ++i)
 	{
-		float postMult = input[i] < 0 ? -1 : 1;
-		if (fabs(input[i]) > reso)
-		{
-			output[i] = reso * postMult;
-		}
-		else
-		{
-			output[i] = input[i];
-		}
+		output[i] = (b0/a0)*input[i] + (b1/a0)*input[i-1] + (b2/a0)*input[i-2]
+			- (a1/a0)*output[i-1] - (a2/a0)*output[i-2];
 	}
 }
 
