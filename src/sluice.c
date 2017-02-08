@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "thirdparty/log.h"
-
 // Cutoff, resonance, input, output
 #define NUM_PORTS 4
 #define PORT_CUTOFF 0
@@ -13,15 +11,17 @@
 #define PORT_IN 2
 #define PORT_OUT 3
 
-LADSPA_Descriptor* desc;
+LADSPA_Descriptor* desc = 0;
 
 const LADSPA_Descriptor * slcDesc(unsigned long index)
 {
-	log_init("sluice_log.txt");
 
 	// Only allow one plugin index
 	if (index != 0)
-		return NULL;
+		return 0;
+	
+	if (desc != 0)
+		return 0;
 
 	desc = (LADSPA_Descriptor*)calloc(1, sizeof(LADSPA_Descriptor));
 
@@ -49,7 +49,7 @@ const LADSPA_Descriptor * slcDesc(unsigned long index)
 		(LADSPA_PortRangeHint*)calloc(NUM_PORTS, sizeof(LADSPA_PortRangeHint));
 
 	desc->PortDescriptors = portDescriptors;
-	desc->PortNames = portNames;
+	desc->PortNames = (const char* const *)portNames;
 	desc->PortRangeHints = portRangeHints;
 
 	// Cutoff port - logarithmic, range of half sample rate - usually 0 - 22050
@@ -91,7 +91,6 @@ LADSPA_Handle slcInstantiate(const LADSPA_Descriptor *desc, unsigned long sample
 {
 	SluiceData *data = (SluiceData*)calloc(1, sizeof(SluiceData));
 	data->sampleRate = sampleRate;
-	log_info("sampleRate: %d", sampleRate);
 	return (void*)data;
 }
 
@@ -138,7 +137,6 @@ void slcRun(LADSPA_Handle instance, unsigned long sampleCount)
 	float t1 = 0, t2 = 0; //temporary buffers
 	// Set coefficients given frequency & resonance [0.0...1.0]
 	float frequency = (2 * cutoff) / (float)sampleRate;
-	log_info("freq:%f", frequency);
 	q = 1.0f - frequency;
 	p = frequency + 0.8f * frequency * q;
 	f = p + p - 1.0f;

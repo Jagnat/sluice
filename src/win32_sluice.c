@@ -9,5 +9,4 @@ const LADSPA_Descriptor *ladspa_descriptor(unsigned long index)
 }
 
 #include "sluice.c"
-#include "thirdparty/log.c"
 
