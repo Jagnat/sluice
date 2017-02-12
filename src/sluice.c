@@ -13,18 +13,9 @@
 
 LADSPA_Descriptor* desc = 0;
 
-const LADSPA_Descriptor * slcDesc(unsigned long index)
+void slcInit()
 {
-
-	// Only allow one plugin index
-	if (index != 0)
-		return 0;
-	
-	if (desc != 0)
-		return 0;
-
 	desc = (LADSPA_Descriptor*)calloc(1, sizeof(LADSPA_Descriptor));
-
 	// Properties
 	desc->UniqueID = 11435;
 	desc->Label = "sluice_plugin";
@@ -35,6 +26,7 @@ const LADSPA_Descriptor * slcDesc(unsigned long index)
 
 	// Function pointers - everything not specified has been 0-cleared
 	desc->instantiate = slcInstantiate;
+	desc->activate = slcActivate;
 	desc->connect_port = slcConnectPort;
 	desc->run = slcRun;
 	desc->cleanup = slcCleanup;
@@ -83,6 +75,16 @@ const LADSPA_Descriptor * slcDesc(unsigned long index)
 	portDescriptors[PORT_OUT] = LADSPA_PORT_OUTPUT | LADSPA_PORT_AUDIO;
 	portNames[PORT_OUT] = "Output";
 	portRangeHints[PORT_OUT].HintDescriptor = 0;
+}
+
+const LADSPA_Descriptor * slcDesc(unsigned long index)
+{
+	// Only allow one plugin index
+	if (index != 0)
+		return 0;
+
+	if (!desc)
+		slcInit();
 
 	return desc;
 }
@@ -92,6 +94,11 @@ LADSPA_Handle slcInstantiate(const LADSPA_Descriptor *desc, unsigned long sample
 	SluiceData *data = (SluiceData*)calloc(1, sizeof(SluiceData));
 	data->sampleRate = sampleRate;
 	return (void*)data;
+}
+
+void slcActivate(LADSPA_Handle instance)
+{
+	// TODO: if you add a filter buffer, zero it out here	
 }
 
 void slcConnectPort(LADSPA_Handle instance, unsigned long port, float *dataLoc)
